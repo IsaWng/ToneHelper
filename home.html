@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>礼貌表达助手 v0.1</title>
+  <style>
+    :root{--gap:12px;--radius:14px;--shadow:0 6px 20px rgba(0,0,0,.08)}
+    html,body{height:100%}
+    body{margin:0;font-family:-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, PingFang SC, Hiragino Sans GB, Microsoft Yahei, Noto Sans CJK SC, Helvetica, Arial, sans-serif;background:#f7f7f9;color:#111}
+    .contenedor{max-width:920px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    header h1{font-size:20px;margin:0}
+    .tarjeta{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .fila{display:flex;gap:var(--gap);flex-wrap:wrap}
+    textarea{width:100%;min-height:140px;resize:vertical;border:1px solid #e3e5ea;border-radius:12px;padding:12px 14px;font-size:15px;outline:none}
+    textarea:focus{border-color:#6a7cff;box-shadow:0 0 0 3px rgba(106,124,255,.15)}
+    .controles{display:flex;gap:var(--gap);align-items:center;flex-wrap:wrap;margin-top:12px}
+    .grupo{display:flex;gap:8px;align-items:center}
+    .btn{appearance:none;border:0;border-radius:12px;padding:10px 14px;font-size:14px;background:#111;color:#fff;cursor:pointer}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .btn-sec{background:#eef0f5;color:#111}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{border:1px solid #e3e5ea;border-radius:999px;padding:6px 10px;cursor:pointer;font-size:13px;background:#fff}
+    .chip.activo{background:#111;color:#fff;border-color:#111}
+    .salida{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--gap);margin-top:16px}
+    .carta{border:1px solid #eef0f5;border-radius:14px;padding:14px;background:#fff;display:flex;flex-direction:column;gap:10px}
+    .razon{font-size:12px;color:#666}
+    .contador{font-size:12px;color:#666;margin-left:auto}
+    .pie{font-size:12px;color:#666;margin-top:18px}
+    .estado{font-size:13px;color:#666}
+    .historial{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .pill{font-size:12px;border:1px solid #e3e5ea;border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  </style>
+</head>
+<body>
+  <div class="contenedor">
+    <header>
+      <h1>礼貌表达助手 v0.1</h1>
+      <div class="estado" id="estado">就绪 · 支持中/英/西 · Cmd/Ctrl+Enter 生成</div>
+    </header>
+
+    <section class="tarjeta">
+      <label for="entrada">原文</label>
+      <textarea id="entrada" placeholder="粘贴或输入 20–300 字的句子或短段落"></textarea>
+      <div class="controles">
+        <div class="grupo">
+          <span>语气</span>
+          <div class="chips" id="chips-tono">
+            <button class="chip activo" data-valor="softer">更温和</button>
+            <button class="chip" data-valor="colloquial">更口语</button>
+            <button class="chip" data-valor="concise">更简洁</button>
+          </div>
+        </div>
+        <div class="grupo">
+          <label for="idioma">语言</label>
+          <select id="idioma">
+            <option value="auto">自动检测</option>
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+        <div class="contador" id="contador">0/300</div>
+        <button id="btn-generar" class="btn">生成</button>
+        <button id="btn-limpiar" class="btn btn-sec">清空</button>
+      </div>
+
+      <div class="salida" id="salida" aria-live="polite" style="min-height: 40px; margin-top:12px"></div>
+
+      <div class="historial" id="historial"></div>
+
+      <div class="pie">隐私：仅在本地保存最近 5 条输入以便复用。不开启任何外传。</div>
+    </section>
+  </div>
+
+  <script>
+    // 配置占位 API。部署后可设置 window.API_ENDPOINT = "https://tu-dominio/api/rewrite"
+    window.API_ENDPOINT = "http://localhost:8000/api/rewrite";
+
+
+    // --- Utilidades ---
+    const qs = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+    const byId = id => document.getElementById(id);
+
+    const entrada = byId('entrada');
+    const contador = byId('contador');
+    const salida = byId('salida');
+    const btnGenerar = byId('btn-generar');
+    const btnLimpiar = byId('btn-limpiar');
+    const selectIdioma = byId('idioma');
+    const chipsTono = byId('chips-tono');
+    const estado = byId('estado');
+    const historial = byId('historial');
+
+    let tonoActual = 'softer';
+
+    // 控件事件
+    chipsTono.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('chip')){
+        qsa('.chip', chipsTono).forEach(c=>c.classList.remove('activo'));
+        e.target.classList.add('activo');
+        tonoActual = e.target.dataset.valor;
+      }
+    });
+
+    entrada.addEventListener('input', ()=>{
+      const len = entrada.value.trim().length;
+      contador.textContent = `${len}/300`;
+      if(len>300) contador.style.color = '#c00'; else contador.style.color = '#666';
+    });
+
+    btnLimpiar.addEventListener('click', ()=>{
+      entrada.value = '';
+      contador.textContent = '0/300';
+      salida.innerHTML = '';
+      estado.textContent = '已清空';
+    });
+
+    // 快捷键
+    document.addEventListener('keydown', (e)=>{
+      if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='enter'){
+        e.preventDefault(); generar();
+      }
+      if(e.key==='Escape'){
+        e.preventDefault(); btnLimpiar.click();
+      }
+    });
+
+    // 历史记录（最近 5 条）
+    const CLAVE_HIST = 'historial_rewrite_v01';
+    function cargarHistorial(){
+      const items = JSON.parse(localStorage.getItem(CLAVE_HIST)||'[]');
+      historial.innerHTML = '';
+      items.forEach(txt=>{
+        const pill = document.createElement('button');
+        pill.className = 'pill';
+        pill.title = txt;
+        pill.textContent = txt;
+        pill.addEventListener('click', ()=>{entrada.value = txt; entrada.dispatchEvent(new Event('input'));});
+        historial.appendChild(pill);
+      });
+    }
+    function guardarHistorial(texto){
+      let arr = JSON.parse(localStorage.getItem(CLAVE_HIST)||'[]');
+      arr = [texto, ...arr.filter(t=>t!==texto)].slice(0,5);
+      localStorage.setItem(CLAVE_HIST, JSON.stringify(arr));
+      cargarHistorial();
+    }
+
+    cargarHistorial();
+
+    // 主流程
+    btnGenerar.addEventListener('click', generar);
+
+    async function generar(){
+      const texto = entrada.value.trim();
+      if(texto.length < 5){
+        notificar('最少 5 字');
+        return;
+      }
+      if(texto.length > 300){
+        notificar('最多 300 字');
+        return;
+      }
+      const idioma = selectIdioma.value;
+      bloquear(true);
+      renderCargando();
+      try{
+        const datos = await llamarAPI(texto, tonoActual, idioma);
+        renderResultados(datos);
+        guardarHistorial(texto);
+        notificar('完成');
+      }catch(err){
+        console.error(err);
+        renderError('生成失败，已使用占位结果');
+        const datos = await mockGenerar(texto, tonoActual, idioma);
+        renderResultados(datos);
+      }finally{
+        bloquear(false);
+      }
+    }
+
+    function bloquear(si){
+      btnGenerar.disabled = si; btnLimpiar.disabled = si; entrada.disabled = si; selectIdioma.disabled = si;
+    }
+
+    function notificar(msg){ estado.textContent = msg; }
+
+    function renderCargando(){
+      salida.innerHTML = `<div class="carta">正在生成…</div>`;
+    }
+
+    function renderError(msg){
+      salida.innerHTML = `<div class="carta">${msg}</div>`;
+    }
+
+    function renderResultados(resp){
+      const tarjetas = resp.rewrites.map((r, i)=>{
+        const id = `copiar-${Date.now()}-${i}`;
+        return `<div class="carta">
+          <div>${escapeHTML(r.text)}</div>
+          <div class="razon">理由：${escapeHTML(r.reason||'表达更自然')}</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-sec" data-copiar-id="${id}">复制</button>
+          </div>
+        </div>`
+      }).join('');
+      salida.innerHTML = tarjetas;
+      // 绑定复制
+      qsa('[data-copiar-id]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const carta = btn.closest('.carta');
+          const texto = carta.querySelector('div').textContent;
+          try{ await navigator.clipboard.writeText(texto); notificar('已复制'); }
+          catch{ notificar('复制失败'); }
+        });
+      });
+    }
+
+    function escapeHTML(s){
+      return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    }
+
+    // 调用真实/占位 API
+    async function llamarAPI(texto, tono, idioma){
+      if(!window.API_ENDPOINT) throw new Error('占位模式');
+      const res = await fetch(window.API_ENDPOINT, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text: texto, tone: tono, lang: idioma })
+      });
+      if(!res.ok) throw new Error('API 错误 ' + res.status);
+      return await res.json();
+    }
+
+    // 占位生成：根据语气与语言做最小可用改写，便于前端预览
+    async function mockGenerar(texto, tono, idioma){
+      const lang = idioma==='auto' ? detectarIdioma(texto) : idioma;
+      const fabrica = {
+        zh: (t)=> mockZH(t, tono),
+        en: (t)=> mockEN(t, tono),
+        es: (t)=> mockES(t, tono)
+      }[lang] || ((t)=> mockZH(t, tono));
+      return { rewrites: fabrica(texto) };
+    }
+
+    function detectarIdioma(t){
+      // 极简检测：含中文字符则 zh；含西语常见字符/词则 es；默认 en
+      if(/[\u4e00-\u9fa5]/.test(t)) return 'zh';
+      if(/[ñáéíóú¿¡]/i.test(t) || /(gracias|por favor|hola|vale|perdón)/i.test(t)) return 'es';
+      return 'en';
+    }
+
+    // ——— 语言占位器 ———
+    function mockZH(t, tono){
+      const base = t.replace(/[\s\n]+/g,' ').trim();
+      const rezones = {
+        softer: ['语气缓和','保留边界','减少冲突'],
+        colloquial: ['更口语','更自然','更日常'],
+        concise: ['更简短','核心保留','去冗余']
+      }[tono]||['表达自然'];
+      return [
+        { text: zhTransform(base, tono, 0), reason: rezones[0] },
+        { text: zhTransform(base, tono, 1), reason: rezones[1]||rezones[0] },
+        { text: zhTransform(base, tono, 2), reason: rezones[2]||rezones[0] }
+      ];
+    }
+    function zhTransform(s, tono, variante){
+      if(tono==='softer'){
+        const pref = ['麻烦','请','如果方便的话'][variante]||'请';
+        return `${pref} ${s.replace(/^我/g,'我这边')}，谢谢理解。`;
+      }
+      if(tono==='colloquial'){
+        const pref = ['嘿','嗨','嗯'][variante]||'';
+        return `${pref ? pref+'，' : ''}${s.replace('无法','不太行').replace('不能','不太能')}，可以吗？`;
+      }
+      if(tono==='concise'){
+        return s.replace(/，?谢谢(理解|配合)?。?$/,'').replace(/请问/g,'请').replace(/麻烦/g,'请').replace(/。?$/,'。');
+      }
+      return s;
+    }
+
+    function mockEN(t, tono){
+      const s = t.trim();
+      if(tono==='softer') return [
+        {text:`Could we ${lowerFirst(s)}? Thanks for understanding.`, reason:'softer tone'},
+        {text:`I wonder if we could ${lowerFirst(s)}. Appreciate it.`, reason:'hedging'},
+        {text:`If possible, could we ${lowerFirst(s)}? Thank you.`, reason:'polite request'}
+      ];
+      if(tono==='colloquial') return [
+        {text:`Hey, can we ${lowerFirst(s)}?`, reason:'casual'},
+        {text:`Mind if we ${lowerFirst(s)}?`, reason:'spoken'},
+        {text:`Let’s ${lowerFirst(s)}, ok?`, reason:'direct but friendly'}
+      ];
+      return [
+        {text:`Please ${lowerFirst(s)}.`, reason:'concise'},
+        {text:`Let’s ${lowerFirst(s)}.`, reason:'concise'},
+        {text:`${capitalize(s)}.`, reason:'shortened'}
+      ];
+    }
+
+    function mockES(t, tono){
+      const s = t.trim();
+      if(tono==='softer') return [
+        {text:`¿Podríamos ${lowerFirstES(s)}? Gracias por la comprensión.`, reason:'tono suave'},
+        {text:`Si es posible, ¿podemos ${lowerFirstES(s)}?`, reason:'condicional'},
+        {text:`Te agradecería si ${lowerFirstES(s)}.`, reason:'cortesía'}
+      ];
+      if(tono==='colloquial') return [
+        {text:`Oye, ¿podemos ${lowerFirstES(s)}?`, reason:'coloquial'},
+        {text:`¿Te va si ${lowerFirstES(s)}?`, reason:'hablado'},
+        {text:`Mejor ${lowerFirstES(s)}, ¿vale?`, reason:'directo amable'}
+      ];
+      return [
+        {text:`Por favor, ${lowerFirstES(s)}.`, reason:'conciso'},
+        {text:`${capitalize(s)}.`, reason:'breve'},
+        {text:`Procedamos a ${lowerFirstES(s)}.`, reason:'formal breve'}
+      ];
+    }
+
+    function lowerFirst(str){
+      return str.replace(/^\s*(to\s+)?/i,'').replace(/[.]$/,'').replace(/^([A-Z])/, m=>m.toLowerCase());
+    }
+    function lowerFirstES(str){
+      return str.replace(/[.]$/,'').replace(/^([A-ZÁÉÍÓÚÑ])/, m=>m.toLowerCase());
+    }
+    function capitalize(str){ return str.charAt(0).toUpperCase()+str.slice(1).replace(/[.]$/,''); }
+  </script>
+</body>
+</html>
