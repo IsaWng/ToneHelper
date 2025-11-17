@@ -2,6 +2,7 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import os
 import re
 
@@ -12,6 +13,9 @@ if USE_OPENAI:
     client = OpenAI(timeout=900.0)
 
 # -------------------- FastAPI 初始化 --------------------
+BASE_DIR = os.path.dirname(__file__)
+HOME_FILE = os.path.join(BASE_DIR, "home.html")
+
 app = FastAPI(title="Polite Rewriter API", version="0.2")
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +40,12 @@ class RewriteOut(BaseModel):
 @app.get("/health")
 async def health():
     return {"ok": True, "use_openai": USE_OPENAI}
+
+@app.get("/", response_class=FileResponse)
+async def serve_home():
+    if not os.path.isfile(HOME_FILE):
+        raise HTTPException(404, "home.html not found")
+    return FileResponse(HOME_FILE)
 
 @app.post("/api/rewrite", response_model=RewriteOut)
 async def rewrite(payload: RewriteIn):
