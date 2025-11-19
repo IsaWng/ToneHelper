@@ -58,6 +58,33 @@
       font-size:16px;
       line-height:1.5;
     }
+    .header-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:12px;
+    }
+    .language-switch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .language-switch label{
+      margin:0;
+      font-size:13px;
+      font-weight:600;
+      color:#1d2534;
+      letter-spacing:.02em;
+      display:inline-flex;
+      align-items:center;
+    }
+    .language-switch select{
+      font-size:13px;
+      padding:8px 12px;
+    }
     .hero-pill{
       display:inline-flex;
       align-items:center;
@@ -109,6 +136,12 @@
       margin-top:18px;
     }
     .grupo{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .grupo-label{
+      font-size:13px;
+      font-weight:600;
+      color:#1d2534;
+      letter-spacing:.02em;
+    }
     .btn{
       appearance:none;
       border:0;
@@ -242,31 +275,41 @@
 <body>
   <div class="contenedor">
     <header>
-      <div class="hero-pill">ToneHelper · v0.2</div>
-      <h1>让语气更温和，也能保持专业和立场。</h1>
-      <p>贴上 20–300 字的句子或段落，选择语气和语言，ToneHelper 立即生成三种更礼貌、更口语或更简洁的表达。</p>
+      <div class="header-top">
+        <div class="hero-pill">ToneHelper · v0.2</div>
+        <div class="language-switch">
+          <label for="ui-lang" id="ui-lang-label">界面语言</label>
+          <select id="ui-lang">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+      </div>
+      <h1 id="hero-title">让语气更温和，也能保持专业和立场。</h1>
+      <p id="hero-desc">贴上 20–300 字的句子或段落，选择语气和语言，ToneHelper 立即生成三种更礼貌、更口语或更简洁的表达。</p>
       <div class="estado" id="estado">就绪 · 支持中/英/西 · Cmd/Ctrl+Enter 生成</div>
     </header>
 
     <section class="tarjeta">
-      <label for="entrada">原文</label>
+      <label for="entrada" id="label-entrada">原文</label>
       <textarea id="entrada" placeholder="粘贴或输入 20–300 字的句子或短段落"></textarea>
       <div class="controles">
         <div class="grupo">
-          <span>语气</span>
+          <span class="grupo-label" id="tone-label">语气</span>
           <div class="chips" id="chips-tono">
-            <button class="chip activo" data-valor="softer">更温和</button>
-            <button class="chip" data-valor="colloquial">更口语</button>
-            <button class="chip" data-valor="concise">更简洁</button>
+            <button class="chip activo" data-valor="softer" id="tone-softer">更温和</button>
+            <button class="chip" data-valor="colloquial" id="tone-colloquial">更口语</button>
+            <button class="chip" data-valor="concise" id="tone-concise">更简洁</button>
           </div>
         </div>
         <div class="grupo">
-          <label for="idioma">语言</label>
+          <label for="idioma" id="language-label">语言</label>
           <select id="idioma">
-            <option value="auto">自动检测</option>
-            <option value="zh">中文</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
+            <option value="auto" id="lang-option-auto">自动检测</option>
+            <option value="zh" id="lang-option-zh">中文</option>
+            <option value="en" id="lang-option-en">English</option>
+            <option value="es" id="lang-option-es">Español</option>
           </select>
         </div>
         <div class="contador" id="contador">0/300</div>
@@ -278,7 +321,7 @@
 
       <div class="historial" id="historial"></div>
 
-      <div class="pie">隐私：仅在本地保存最近 5 条输入以便复用。不开启任何外传。</div>
+      <div class="pie" id="footer-text">隐私：仅在本地保存最近 5 条输入以便复用。不开启任何外传。</div>
     </section>
   </div>
 
@@ -286,6 +329,106 @@
     // 配置占位 API。部署后可设置 window.API_ENDPOINT = "https://tu-dominio/api/rewrite"
     window.API_ENDPOINT = "http://localhost:8000/api/rewrite";
 
+    const UI_LANG_KEY = 'tonehelper_ui_lang';
+    const SUPPORTED_UI_LANGS = ['zh','en','es'];
+    const UI_STRINGS = {
+      zh: {
+        pageTitle: '礼貌表达助手 v0.2',
+        heroTitle: '让语气更温和，也能保持专业和立场。',
+        heroDesc: '贴上 20–300 字的句子或段落，选择语气和语言，ToneHelper 立即生成三种更礼貌、更口语或更简洁的表达。',
+        statusReady: '就绪 · 支持中/英/西 · Cmd/Ctrl+Enter 生成',
+        inputLabel: '原文',
+        inputPlaceholder: '粘贴或输入 20–300 字的句子或短段落',
+        toneLabel: '语气',
+        toneSofter: '更温和',
+        toneColloquial: '更口语',
+        toneConcise: '更简洁',
+        languageLabel: '语言',
+        langAuto: '自动检测',
+        langChinese: '中文',
+        langEnglish: 'English',
+        langSpanish: 'Español',
+        generate: '生成',
+        clear: '清空',
+        footer: '隐私：仅在本地保存最近 5 条输入以便复用。不开启任何外传。',
+        uiLangLabel: '界面语言',
+        errorTooShort: '最少 5 字',
+        errorTooLong: '最多 300 字',
+        statusCleared: '已清空',
+        statusDone: '完成',
+        statusCopied: '已复制',
+        statusCopyFailed: '复制失败',
+        statusError: '生成失败，改用占位结果',
+        loading: '正在生成…',
+        fallbackError: '生成失败，已使用占位结果',
+        defaultReason: '表达更自然',
+        copy: '复制'
+      },
+      en: {
+        pageTitle: 'ToneHelper · Polite Rewrite',
+        heroTitle: 'Sound kinder while staying professional.',
+        heroDesc: 'Paste 20–300 characters, choose tone + language, and get three polished rewrites instantly.',
+        statusReady: 'Ready · zh/en/es supported · Cmd/Ctrl+Enter to run',
+        inputLabel: 'Original text',
+        inputPlaceholder: 'Paste or type a 20–300 character sentence or short paragraph',
+        toneLabel: 'Tone',
+        toneSofter: 'Softer',
+        toneColloquial: 'More casual',
+        toneConcise: 'More concise',
+        languageLabel: 'Rewrite language',
+        langAuto: 'Auto detect',
+        langChinese: 'Chinese',
+        langEnglish: 'English',
+        langSpanish: 'Spanish',
+        generate: 'Generate',
+        clear: 'Clear',
+        footer: 'Privacy: only the last 5 inputs stay in this browser for quick reuse. Nothing leaves your device.',
+        uiLangLabel: 'Interface',
+        errorTooShort: 'At least 5 characters',
+        errorTooLong: 'Up to 300 characters',
+        statusCleared: 'Cleared',
+        statusDone: 'Done',
+        statusCopied: 'Copied',
+        statusCopyFailed: 'Copy failed',
+        statusError: 'Generation failed, using placeholder',
+        loading: 'Working…',
+        fallbackError: 'Generation failed, showing placeholder rewrites',
+        defaultReason: 'Sounds more natural',
+        copy: 'Copy'
+      },
+      es: {
+        pageTitle: 'ToneHelper · Reformular con tacto',
+        heroTitle: 'Habla con más tacto sin perder claridad.',
+        heroDesc: 'Pega un texto de 20–300 caracteres, elige tono e idioma y recibe tres versiones más amables al instante.',
+        statusReady: 'Listo · zh/en/es disponibles · Cmd/Ctrl+Enter para generar',
+        inputLabel: 'Texto original',
+        inputPlaceholder: 'Pega o escribe una frase o párrafo corto de 20–300 caracteres',
+        toneLabel: 'Tono',
+        toneSofter: 'Más suave',
+        toneColloquial: 'Más coloquial',
+        toneConcise: 'Más conciso',
+        languageLabel: 'Idioma',
+        langAuto: 'Detección automática',
+        langChinese: 'Chino',
+        langEnglish: 'Inglés',
+        langSpanish: 'Español',
+        generate: 'Generar',
+        clear: 'Limpiar',
+        footer: 'Privacidad: guardamos solo las últimas 5 entradas en este navegador para reutilizarlas. Nada sale de tu equipo.',
+        uiLangLabel: 'Idioma de la interfaz',
+        errorTooShort: 'Mínimo 5 caracteres',
+        errorTooLong: 'Máximo 300 caracteres',
+        statusCleared: 'Vacío',
+        statusDone: 'Listo',
+        statusCopied: 'Copiado',
+        statusCopyFailed: 'No se pudo copiar',
+        statusError: 'Fallo al generar, usamos un ejemplo',
+        loading: 'Generando…',
+        fallbackError: 'Fallo al generar, mostramos un resultado simulado',
+        defaultReason: 'Suena más natural',
+        copy: 'Copiar'
+      }
+    };
 
     // --- Utilidades ---
     const qs = (s, el=document) => el.querySelector(s);
@@ -301,8 +444,77 @@
     const chipsTono = byId('chips-tono');
     const estado = byId('estado');
     const historial = byId('historial');
+    const heroTitle = byId('hero-title');
+    const heroDesc = byId('hero-desc');
+    const labelEntrada = byId('label-entrada');
+    const toneLabel = byId('tone-label');
+    const toneSofter = byId('tone-softer');
+    const toneColloquial = byId('tone-colloquial');
+    const toneConcise = byId('tone-concise');
+    const languageLabel = byId('language-label');
+    const langOptionAuto = byId('lang-option-auto');
+    const langOptionZh = byId('lang-option-zh');
+    const langOptionEn = byId('lang-option-en');
+    const langOptionEs = byId('lang-option-es');
+    const footerText = byId('footer-text');
+    const uiLangSelect = byId('ui-lang');
+    const uiLangLabel = byId('ui-lang-label');
 
     let tonoActual = 'softer';
+    let uiLang = getInitialUILanguage();
+    let lastStatusKey = 'statusReady';
+
+    function getInitialUILanguage(){
+      const saved = localStorage.getItem(UI_LANG_KEY);
+      if(saved && SUPPORTED_UI_LANGS.includes(saved)) return saved;
+      const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      const match = SUPPORTED_UI_LANGS.find(lang=>nav.startsWith(lang));
+      return match || 'en';
+    }
+
+    function t(key){
+      const dict = UI_STRINGS[uiLang] || UI_STRINGS.en;
+      return dict[key] || UI_STRINGS.en[key] || key;
+    }
+
+    function applyTranslations(){
+      const dict = UI_STRINGS[uiLang] || UI_STRINGS.en;
+      document.title = dict.pageTitle;
+      heroTitle.textContent = dict.heroTitle;
+      heroDesc.textContent = dict.heroDesc;
+      labelEntrada.textContent = dict.inputLabel;
+      entrada.placeholder = dict.inputPlaceholder;
+      toneLabel.textContent = dict.toneLabel;
+      toneSofter.textContent = dict.toneSofter;
+      toneColloquial.textContent = dict.toneColloquial;
+      toneConcise.textContent = dict.toneConcise;
+      languageLabel.textContent = dict.languageLabel;
+      langOptionAuto.textContent = dict.langAuto;
+      langOptionZh.textContent = dict.langChinese;
+      langOptionEn.textContent = dict.langEnglish;
+      langOptionEs.textContent = dict.langSpanish;
+      btnGenerar.textContent = dict.generate;
+      btnLimpiar.textContent = dict.clear;
+      footerText.textContent = dict.footer;
+      uiLangLabel.textContent = dict.uiLangLabel;
+      if(lastStatusKey){
+        estado.textContent = t(lastStatusKey);
+      }
+    }
+
+    function setUILang(lang){
+      if(!SUPPORTED_UI_LANGS.includes(lang)) lang = 'en';
+      uiLang = lang;
+      localStorage.setItem(UI_LANG_KEY, lang);
+      document.documentElement.lang = lang;
+      if(uiLangSelect) uiLangSelect.value = lang;
+      applyTranslations();
+    }
+
+    if(uiLangSelect){
+      uiLangSelect.addEventListener('change', (e)=> setUILang(e.target.value));
+    }
+    setUILang(uiLang);
 
     // 控件事件
     chipsTono.addEventListener('click', (e)=>{
@@ -323,7 +535,7 @@
       entrada.value = '';
       contador.textContent = '0/300';
       salida.innerHTML = '';
-      estado.textContent = '已清空';
+      notificar('statusCleared');
     });
 
     // 快捷键
@@ -365,11 +577,11 @@
     async function generar(){
       const texto = entrada.value.trim();
       if(texto.length < 5){
-        notificar('最少 5 字');
+        notificar('errorTooShort');
         return;
       }
       if(texto.length > 300){
-        notificar('最多 300 字');
+        notificar('errorTooLong');
         return;
       }
       const idioma = selectIdioma.value;
@@ -379,10 +591,11 @@
         const datos = await llamarAPI(texto, tonoActual, idioma);
         renderResultados(datos);
         guardarHistorial(texto);
-        notificar('完成');
+        notificar('statusDone');
       }catch(err){
         console.error(err);
-        renderError('生成失败，已使用占位结果');
+        renderError(t('fallbackError'));
+        notificar('statusError');
         const datos = await mockGenerar(texto, tonoActual, idioma);
         renderResultados(datos);
       }finally{
@@ -394,26 +607,36 @@
       btnGenerar.disabled = si; btnLimpiar.disabled = si; entrada.disabled = si; selectIdioma.disabled = si;
     }
 
-    function notificar(msg){ estado.textContent = msg; }
+    function notificar(key){
+      if(UI_STRINGS.en[key]){
+        lastStatusKey = key;
+        estado.textContent = t(key);
+      }else{
+        lastStatusKey = null;
+        estado.textContent = key;
+      }
+    }
 
     function renderCargando(){
-      salida.innerHTML = `<div class="carta">正在生成…</div>`;
+      salida.innerHTML = `<div class="carta">${escapeHTML(t('loading'))}</div>`;
     }
 
     function renderError(msg){
-      salida.innerHTML = `<div class="carta">${msg}</div>`;
+      salida.innerHTML = `<div class="carta">${escapeHTML(msg)}</div>`;
     }
 
     function renderResultados(resp){
+      const copyLabel = t('copy');
+      const defaultReason = t('defaultReason');
       const tarjetas = resp.rewrites.map((r, i)=>{
         const id = `copiar-${Date.now()}-${i}`;
         return `<div class="carta">
           <div>${escapeHTML(r.text)}</div>
           <div class="result-meta">
-            <span>${escapeHTML(r.reason||'表达更自然')}</span>
+            <span>${escapeHTML(r.reason||defaultReason)}</span>
             <button class="copy-btn" data-copiar-id="${id}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="3"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              复制
+              ${copyLabel}
             </button>
           </div>
         </div>`
@@ -424,8 +647,8 @@
         btn.addEventListener('click', async ()=>{
           const carta = btn.closest('.carta');
           const texto = carta.querySelector('div').textContent;
-          try{ await navigator.clipboard.writeText(texto); notificar('已复制'); }
-          catch{ notificar('复制失败'); }
+          try{ await navigator.clipboard.writeText(texto); notificar('statusCopied'); }
+          catch{ notificar('statusCopyFailed'); }
         });
       });
     }
