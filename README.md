@@ -12,7 +12,7 @@ ToneHelper 是一个用于把短句或段落改写成更温和、更口语或更
 ## 目录结构
 ```
 ToneHelper/
-├── tonehelper/         # FastAPI 服务源码及工具
+├── backend/            # FastAPI 服务源码及工具
 │   ├── app.py          # FastAPI create_app 工厂
 │   ├── config.py       # 配置与常量
 │   ├── mock_engine.py  # Mock 生成逻辑
