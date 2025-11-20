@@ -13,7 +13,7 @@ ToneHelper 是一个用于把短句或段落改写成更温和、更口语或更
 ```
 ToneHelper/
 ├── backend/            # FastAPI 服务源码及工具
-│   ├── app.py          # FastAPI create_app 工厂
+│   ├── app.py          # FastAPI create_app 工厂 + Flask 示例
 │   ├── config.py       # 配置与常量
 │   ├── mock_engine.py  # Mock 生成逻辑
 │   ├── models.py       # Pydantic 模型
@@ -23,7 +23,6 @@ ToneHelper/
 ├── frontend/
 │   └── home.html       # 前端静态页面
 ├── main.py             # Uvicorn 入口
-├── app.py              # 早期 Flask 版本示例（未在 docker-compose 中启用）
 ├── requirements.txt
 ├── Dockerfile
 └── docker-compose.yml
@@ -34,7 +33,7 @@ ToneHelper/
 | 变量名 | 说明 | 默认值 |
 | --- | --- | --- |
 | `OPENAI_API_KEY` | （可选）用于启用 OpenAI Responses API；为空时使用本地 mock | 空 |
-| `PUERTO` | `app.py` Flask 版本监听端口 | 8080 |
+| `PUERTO` | `backend/app.py` Flask 版本监听端口 | 8080 |
 | `MODELO_POR_DEFECTO` | Flask 版本使用的模型名称 | `gpt-5-nano` |
 
 > FastAPI 版本 (`main.py`) 默认监听 `0.0.0.0:8000`。如需修改，可在启动 `uvicorn` 时传入 `--port`。
@@ -105,7 +104,7 @@ docker compose up --build
 - 发布到静态托管（Vercel、Netlify 等）时，只需把 `window.API_ENDPOINT` 指向你的 API 地址即可。
 
 ## 其他说明
-- `app.py` 展示了使用 Flask + OpenAI Responses API 的另一种实现，便于与现有 Flask 项目集成；功能与 FastAPI 版本类似，但未包含 mock 回退。
+- `backend/app.py` 同时包含 FastAPI 与 Flask 实现：`create_app()` 提供 FastAPI 工厂，`create_flask_app()` 可用于重用 Flask 版本（功能类似但无 mock 回退）。
 - 如需扩展更多语气/语言，可分别在 `mock_*.py` 逻辑与 OpenAI 提示词中添加，并同步更新前端按钮与校验。
 
 欢迎根据业务需要定制提示词、增加鉴权或接入数据库，以构建更完善的 Tone Helper。
